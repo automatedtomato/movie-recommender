@@ -77,6 +77,10 @@ func NewMovie(title string, genres []string, description string, releaseYear int
 	}, nil
 }
 
+func (m Movie) GetDescription() string {
+	return m.Description
+}
+
 func (m Movie) String() string {
 	return fmt.Sprintf("Title: %s\nGenres: %s\nDescription: %s\nReleaseYear: %d\nRating: %f", m.Title, m.Genres, m.Description, m.ReleaseYear, m.Rating)
 }
