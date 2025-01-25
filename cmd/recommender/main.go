@@ -41,7 +41,7 @@ func main() {
 			tfidfVectors[movie.Title],
 		)
 
-		if similarity > 0.5 {
+		if similarity > 0 {
 			fmt.Printf("- %s: %.2f\n", movie.Title, similarity)
 		}
 	}

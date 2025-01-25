@@ -42,92 +42,104 @@ func CalculateTermFrequency(words []string) map[string]float64 {
 //  - Calculate how many documents each word appears in
 //  - Calculate the IDF for each word
 
+// CalculateIDF calculates Inverse Document Frequency for all documents
 func CalculateIDF(allDocuments [][]string) map[string]float64 {
-	// Total number of documents
+	// Total number of documents in the corpus
 	totalDocuments := len(allDocuments)
 
-	// Count documents containing each word
+	// Map to track number of documents containing each word
 	wordDocumentCount := make(map[string]int)
 
-	// First pass: Count documents per word
+	// Iterate through each document to count word document frequency
 	for _, doc := range allDocuments {
-		// Use a set to count each word only once per document
-		uniqueWordsInDoc := make(map[string]bool)
-
+		// Create a set of unique words in current document
+		uniqueWords := make(map[string]bool)
 		for _, word := range doc {
-			uniqueWordsInDoc[word] = true
+			uniqueWords[word] = true
 		}
 
-		// Increment count for words in this document
-		for word := range uniqueWordsInDoc {
+		// Increment document count for each unique word
+		for word := range uniqueWords {
 			wordDocumentCount[word]++
 		}
 	}
 
-	// Calculate IDF for each word
+	// Calculate IDF scores for each word
 	idfScores := make(map[string]float64)
-
 	for word, documentCount := range wordDocumentCount {
-		// IDF formula: log(Total Documents)/ Documents with word)
+		// IDF formula: log(Total Documents / Documents with word)
 		idfScores[word] = math.Log(float64(totalDocuments) / float64(documentCount))
 	}
 
 	return idfScores
 }
 
+// CalculateTFIDF computes Term Frequency-Inverse Document Frequency for movie descriptions
 func CalculateTFIDF(movies []*models.Movie) map[string]map[string]float64 {
-	// Step 1: Preprocess all descriptions
+	// Preprocess all movie descriptions
 	preprocessedDocuments := make([][]string, len(movies))
 	for i, movie := range movies {
 		preprocessedDocuments[i] = PreProcess(movie.Description)
 	}
 
-	// Step 2: Calculate IDF for each word first
+	// Calculate IDF scores across all documents
 	idfScores := CalculateIDF(preprocessedDocuments)
 
-	// Step 3: Calculate TF for each word in each document
+	// Container for TF-IDF vectors for each movie
 	tfidfVectors := make(map[string]map[string]float64)
 
+	// Compute TF-IDF for each movie description
 	for i, document := range preprocessedDocuments {
-		// Get movie title as identifier
+		// Get corresponding movie title
 		movieTitle := movies[i].Title
 
-		// Calculate TF for this document
+		// Calculate term frequencies for current document
 		tfScores := CalculateTermFrequency(document)
 
-		// Calculate TF-IDF for this document
+		// Create TF-IDF vector for current document
 		tfidfVector := make(map[string]float64)
 		for word, tf := range tfScores {
-			// TF-IDF = TF * IDF
+			// TF-IDF is product of Term Frequency and Inverse Document Frequency
 			tfidfVector[word] = tf * idfScores[word]
 		}
 
+		// Store TF-IDF vector for current movie
 		tfidfVectors[movieTitle] = tfidfVector
 	}
 
 	return tfidfVectors
 }
 
+// CosineSimilarity calculates similarity between two TF-IDF vectors
 func CosineSimilarity(vec1, vec2 map[string]float64) float64 {
-	// Calculate the dot product
+	// Initialize dot product and magnitude calculations
 	dotProduct := 0.0
-	for word, tfidf := range vec1 {
-		dotProduct += tfidf * vec2[word]
-	}
-
-	// Calculate the magnitude of both vectors
 	magnitude1 := 0.0
-	for _, val := range vec1 {
-		magnitude1 = val * val
-	}
-	magnitude1 = math.Sqrt(magnitude1)
-
 	magnitude2 := 0.0
-	for _, val := range vec2 {
-		magnitude2 = val * val
+
+	// Calculate dot product and first vector's magnitude
+	for word, tfidf := range vec1 {
+		// Compute dot product by multiplying corresponding TF-IDF values
+		dotProduct += tfidf * vec2[word]
+		// Compute squared magnitude of first vector
+		magnitude1 += tfidf * tfidf
 	}
+
+	// Compute magnitude of second vector
+	for _, tfidf := range vec2 {
+		// Compute squared magnitude of second vector
+		magnitude2 += tfidf * tfidf
+	}
+
+	// Take square root to get actual vector magnitudes
+	magnitude1 = math.Sqrt(magnitude1)
 	magnitude2 = math.Sqrt(magnitude2)
 
-	// Handle cosine similarity
+	// Handle zero magnitude vectors
+	if magnitude1 == 0 || magnitude2 == 0 {
+		return 0
+	}
+
+	// Compute and return cosine similarity
 	return dotProduct / (magnitude1 * magnitude2)
 }
